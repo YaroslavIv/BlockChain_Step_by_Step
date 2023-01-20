@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bcsbs/consensus/ethash"
 	"bcsbs/core"
 	"bcsbs/core/types"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 )
@@ -11,20 +13,24 @@ import (
 func main() {
 	genesis := core.DefaultGenesisBlock()
 
-	bc := &core.BlockChain{}
+	engine := &ethash.Ethash{
+		Target: big.NewInt(int64(math.Pow(16, 3))),
+	}
 
-	b := genesis.ToBlock()
-	bc.InsertChain(types.Blocks{b})
+	bc := core.NewBlockChain(engine, genesis)
 
 	var i int64
+	block := make(chan *types.Block)
 	for i = 1; i < 10; i++ {
+		time.Sleep(time.Second)
+		cb := bc.CurrentBlock()
 		h := &types.Header{
-			ParentHash: b.Hash(),
+			ParentHash: cb.Hash(),
 			Time:       uint64(time.Now().Unix()),
 			Number:     big.NewInt(i),
 		}
-		b = types.NewBlock(h, fmt.Sprintf("Data: %d", i))
-		bc.InsertChain(types.Blocks{b})
+		engine.Seal(types.NewBlock(h, fmt.Sprintf("%d + %d = %d", i, i, i*2)), block, nil)
+		bc.AddBlock(<-block)
 	}
 
 	fmt.Println(bc)

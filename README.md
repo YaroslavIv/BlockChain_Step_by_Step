@@ -3,7 +3,7 @@
 ## Этапы
 
 - [x] Block and Blockchain
-- [ ] Consensus (POW)
+- [x] Consensus (POW)
 - [ ] Transactions
 - [ ] Accounts
 - [ ] Pool-Transaction
