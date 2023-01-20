@@ -5,7 +5,7 @@
 - [x] Block and Blockchain
 - [x] Consensus (POW)
 - [x] Transactions
-- [ ] Accounts
+- [x] Accounts
 - [ ] Pool-Transaction
 - [ ] DB
 - [ ] P2P
