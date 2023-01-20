@@ -24,7 +24,7 @@ func (g *Genesis) ToBlock() *types.Block {
 		Number:     new(big.Int).SetUint64(g.Number),
 		Time:       g.Timestamp,
 	}
-	block := types.NewBlock(head, "Genesis")
+	block := types.NewBlock(head, nil)
 
 	if block.Number().Sign() != 0 {
 		err := fmt.Errorf("can't commit genesis block with number > 0")

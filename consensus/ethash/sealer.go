@@ -93,7 +93,7 @@ search:
 				header.Nonce = types.EncodeNonce(nonce)
 
 				select {
-				case found <- block.WithSealAndBody(header, body):
+				case found <- block.WithSealAndTx(header, &body.Transactions):
 					fmt.Println("Ethash nonce found and reported nonce:", nonce)
 				case <-abort:
 					fmt.Println("Ethash nonce found but discarded")

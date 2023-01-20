@@ -8,6 +8,9 @@ import (
 	"math"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func main() {
@@ -19,9 +22,13 @@ func main() {
 
 	bc := core.NewBlockChain(engine, genesis)
 
-	var i int64
+	key, _ := crypto.GenerateKey()
+	signer := types.HomesteadSigner{}
+
+	var i, j int64
+	var k uint64
 	block := make(chan *types.Block)
-	for i = 1; i < 10; i++ {
+	for i = 1; i < 5; i++ {
 		time.Sleep(time.Second)
 		cb := bc.CurrentBlock()
 		h := &types.Header{
@@ -29,7 +36,17 @@ func main() {
 			Time:       uint64(time.Now().Unix()),
 			Number:     big.NewInt(i),
 		}
-		engine.Seal(types.NewBlock(h, fmt.Sprintf("%d + %d = %d", i, i, i*2)), block, nil)
+		var txs []*types.Transaction
+		for j = 0; j < i; j++ {
+			tx := types.NewTransaction(k, common.BytesToAddress([]byte("Rustam")), []byte(fmt.Sprintf("%d + %d = %d", j, j, j*2)))
+			if tx_sign, err := types.SignTx(tx, signer, key); err != nil {
+				panic(err)
+			} else {
+				txs = append(txs, tx_sign)
+				k += 1
+			}
+		}
+		engine.Seal(types.NewBlock(h, txs), block, nil)
 		bc.AddBlock(<-block)
 	}
 

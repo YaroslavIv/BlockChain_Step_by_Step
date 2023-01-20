@@ -22,6 +22,7 @@ func (ethash *Ethash) SealHash(header *types.Header) (hash common.Hash) {
 
 	enc := []interface{}{
 		header.ParentHash,
+		header.TxHash,
 		header.Number,
 		header.Time,
 	}

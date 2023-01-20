@@ -23,6 +23,7 @@ func (n BlockNonce) Uint64() uint64 {
 
 type Header struct {
 	ParentHash common.Hash
+	TxHash     common.Hash
 	Number     *big.Int
 	Time       uint64
 	Nonce      BlockNonce
@@ -33,24 +34,26 @@ func (h *Header) Hash() common.Hash {
 }
 
 type Body struct {
-	data []byte
+	Transactions Transactions
 }
 
 type Block struct {
-	header *Header
-	body   *Body
+	header       *Header
+	transactions Transactions
 
 	hash atomic.Value
 }
 
-func NewBlock(header *Header, data string) *Block {
+func NewBlock(header *Header, txs []*Transaction) *Block {
 	b := &Block{
 		header: CopyHeader(header),
-		body: &Body{
-			data: []byte(data),
-		},
 	}
-	b.Hash()
+
+	if len(txs) != 0 {
+		b.header.TxHash = rlpHash(txs)
+		b.transactions = make(Transactions, len(txs))
+		copy(b.transactions, txs)
+	}
 
 	return b
 }
@@ -72,13 +75,13 @@ func (b *Block) WithSeal(header *Header) *Block {
 	}
 }
 
-func (b *Block) WithSealAndBody(header *Header, body *Body) *Block {
+func (b *Block) WithSealAndTx(header *Header, txs *Transactions) *Block {
 	cpy := *header
-	bod := *body
+	transactions := *txs
 
 	return &Block{
-		header: &cpy,
-		body:   &bod,
+		header:       &cpy,
+		transactions: transactions,
 	}
 }
 
@@ -92,19 +95,23 @@ func (b *Block) Hash() common.Hash {
 }
 
 func (b *Block) String() string {
+	tx_info := fmt.Sprintf("Tx Len: %d\n", len(b.transactions))
+	for _, tx := range b.transactions {
+		tx_info += tx.String() + "\n"
+	}
 	return fmt.Sprintf("Block: %d\n", b.NumberU64()) +
 		fmt.Sprintf("ParentHash: %s\n", b.header.ParentHash) +
 		fmt.Sprintf("Time: %d\n", b.header.Time) +
 		fmt.Sprintf("Hash: %s\n", b.Hash()) +
-		fmt.Sprintf("Data: %s\n", b.Data()) +
-		fmt.Sprintf("Nonce: %d\n", b.Nonce())
+		fmt.Sprintf("TxHash: %s\n", b.TxHash()) +
+		fmt.Sprintf("Nonce: %d\n", b.Nonce()) + tx_info
 
 }
 
-func (b *Block) Body() *Body             { return &Body{b.body.data} }
+func (b *Block) Body() *Body             { return &Body{b.transactions} }
 func (b *Block) Header() *Header         { return CopyHeader(b.header) }
 func (b *Block) NumberU64() uint64       { return b.header.Number.Uint64() }
 func (b *Block) Number() *big.Int        { return new(big.Int).Set(b.header.Number) }
 func (b *Block) ParentHash() common.Hash { return b.header.ParentHash }
-func (b *Block) Data() []byte            { return b.body.data }
 func (b *Block) Nonce() uint64           { return binary.BigEndian.Uint64(b.header.Nonce[:]) }
+func (b *Block) TxHash() common.Hash     { return b.header.TxHash }
