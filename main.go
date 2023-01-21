@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	example.PoolTx()
+	example.Transactions_2()
 }

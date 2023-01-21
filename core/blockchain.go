@@ -5,6 +5,7 @@ import (
 	"bcsbs/core/state"
 	"bcsbs/core/types"
 	"fmt"
+	"sync"
 )
 
 type BlockChain struct {
@@ -15,6 +16,8 @@ type BlockChain struct {
 	engine consensus.Engine
 
 	statedb *state.StateDB
+
+	mu sync.Mutex
 }
 
 func NewBlockChain(engine consensus.Engine, genesis *Genesis, statedb *state.StateDB) *BlockChain {
@@ -30,14 +33,24 @@ func NewBlockChain(engine consensus.Engine, genesis *Genesis, statedb *state.Sta
 }
 
 func (bc *BlockChain) AddBlock(block *types.Block) {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
 	if err := bc.engine.VerifyHeader(bc.CurrentHeader(), block.Header(), true); err != nil {
 		panic(err)
+	}
+
+	for _, tx := range block.Body().Transactions {
+		bc.statedb.ApplyTx(tx)
 	}
 
 	bc.blocks = append(bc.blocks, block)
 }
 
 func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
 	if len(chain) == 0 {
 		return 0, nil
 	}

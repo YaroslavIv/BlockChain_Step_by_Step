@@ -19,6 +19,7 @@ var (
 	ErrAlreadyKnown       = errors.New("already known")
 	ErrInvalidSender      = errors.New("invalid sender")
 	ErrReplaceUnderpriced = errors.New("replacement transaction underpriced")
+	ErrNegativeValue      = errors.New("negative value")
 )
 
 type blockChain interface {
@@ -113,6 +114,10 @@ func (pool *TxPool) Pending() map[common.Address]types.Transactions {
 }
 
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
+	if tx.Value().Sign() < 0 {
+		return ErrNegativeValue
+	}
+
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		return ErrInvalidSender
@@ -122,18 +127,22 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrNonceTooLow
 	}
 
+	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
+		return ErrInsufficientFunds
+	}
+
 	return nil
 }
 
 func (pool *TxPool) add(tx *types.Transaction) (replaced bool, err error) {
 	hash := tx.Hash()
 	if pool.all.Get(hash) != nil {
-		fmt.Print(fmt.Errorf("Discarding already known transaction %s", hash))
+		fmt.Println(fmt.Errorf("Discarding already known transaction %s", hash))
 		return false, ErrAlreadyKnown
 	}
 
 	if err := pool.validateTx(tx); err != nil {
-		fmt.Print(fmt.Errorf("Discarding invalid transaction hash: %s err: %s", hash, err))
+		fmt.Println(fmt.Errorf("Discarding invalid transaction hash: %s err: %s", hash, err))
 		return false, err
 	}
 

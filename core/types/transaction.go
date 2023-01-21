@@ -26,6 +26,7 @@ type TxData interface {
 
 	sender() *common.Address
 	data() []byte
+	value() *big.Int
 	nonce() uint64
 	to() *common.Address
 
@@ -59,9 +60,14 @@ func (tx *Transaction) setDecoded(inner TxData, size int) {
 
 func (tx *Transaction) Type() uint8             { return tx.inner.txType() }
 func (tx *Transaction) Data() []byte            { return tx.inner.data() }
+func (tx *Transaction) Value() *big.Int         { return new(big.Int).Set(tx.inner.value()) }
 func (tx *Transaction) Nonce() uint64           { return tx.inner.nonce() }
 func (tx *Transaction) To() *common.Address     { return copyAddressPtr(tx.inner.to()) }
 func (tx *Transaction) Sender() *common.Address { return copyAddressPtr(tx.inner.sender()) }
+
+func (tx *Transaction) Cost() *big.Int {
+	return tx.Value()
+}
 
 func (tx *Transaction) RawSignatureValues() (v, r, s *big.Int) {
 	return tx.inner.rawSignatureValues()
@@ -110,6 +116,7 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 func (tx *Transaction) String() string {
 	return fmt.Sprintf("\tSender: %s\n", tx.Sender()) +
 		fmt.Sprintf("\tTo: %s\n", tx.To()) +
+		fmt.Sprintf("\tValue: %d\n", tx.Value()) +
 		fmt.Sprintf("\tNonce: %d\n", tx.Nonce()) +
 		fmt.Sprintf("\tData: %s\n", tx.Data())
 }

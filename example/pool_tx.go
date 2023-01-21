@@ -32,10 +32,11 @@ func PoolTx() {
 	pool := core.NewTxPool(bc, signer)
 
 	var k uint64
+	var i, j int64
 	var txs []*types.Transaction
-	for i := 1; i < 5; i++ {
-		for j := 0; j < i; j++ {
-			tx := types.NewTransaction(k, common.BytesToAddress([]byte("Rustam")), []byte(fmt.Sprintf("%d + %d = %d", i, j, i+j)))
+	for i = 1; i < 5; i++ {
+		for j = 0; j < i; j++ {
+			tx := types.NewTransaction(k, common.BytesToAddress([]byte("Rustam")), big.NewInt(i*j), []byte(fmt.Sprintf("%d + %d = %d", i, j, i+j)))
 			if tx_sign, err := types.SignTx(tx, signer, key); err != nil {
 				panic(err)
 			} else {

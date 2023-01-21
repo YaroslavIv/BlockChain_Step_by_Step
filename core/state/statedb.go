@@ -94,6 +94,17 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 
 // UPDATE
 
+func (s *StateDB) ApplyTx(tx *types.Transaction) bool {
+	stateObject := s.getStateObject(*tx.Sender())
+	if stateObject != nil && stateObject.Balance().Cmp(tx.Value()) >= 0 {
+		stateObject.setNonce(stateObject.Nonce() + 1)
+		stateObject.AddBalance(tx.Value().Neg(tx.Value()))
+		s.AddBalance(*tx.To(), tx.Value())
+		return true
+	}
+	return false
+}
+
 func (s *StateDB) UpdateStateObject(obj *stateObject) {
 	addr := obj.Address()
 	if err := s.trie.TryUpdateAccount(addr[:], &obj.data); err != nil {

@@ -38,7 +38,7 @@ func Transactions() {
 		}
 		var txs []*types.Transaction
 		for j = 0; j < i; j++ {
-			tx := types.NewTransaction(k, common.BytesToAddress([]byte("Rustam")), []byte(fmt.Sprintf("%d + %d = %d", j, j, j*2)))
+			tx := types.NewTransaction(k, common.BytesToAddress([]byte("Rustam")), big.NewInt(i*j), []byte(fmt.Sprintf("%d + %d = %d", j, j, j*2)))
 			if tx_sign, err := types.SignTx(tx, signer, key); err != nil {
 				panic(err)
 			} else {
