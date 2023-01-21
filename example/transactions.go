@@ -20,7 +20,7 @@ func Transactions() {
 		Target: big.NewInt(int64(math.Pow(16, 3))),
 	}
 
-	bc := core.NewBlockChain(engine, genesis)
+	bc := core.NewBlockChain(engine, genesis, nil)
 
 	key, _ := crypto.GenerateKey()
 	signer := types.HomesteadSigner{}

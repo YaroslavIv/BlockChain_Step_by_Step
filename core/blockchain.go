@@ -2,6 +2,7 @@ package core
 
 import (
 	"bcsbs/consensus"
+	"bcsbs/core/state"
 	"bcsbs/core/types"
 	"fmt"
 )
@@ -12,12 +13,15 @@ type BlockChain struct {
 	genesisBlock *types.Block
 
 	engine consensus.Engine
+
+	statedb *state.StateDB
 }
 
-func NewBlockChain(engine consensus.Engine, genesis *Genesis) *BlockChain {
+func NewBlockChain(engine consensus.Engine, genesis *Genesis, statedb *state.StateDB) *BlockChain {
 	bc := &BlockChain{
 		engine:       engine,
 		genesisBlock: genesis.ToBlock(),
+		statedb:      statedb,
 	}
 
 	bc.blocks = append(bc.blocks, bc.genesisBlock)

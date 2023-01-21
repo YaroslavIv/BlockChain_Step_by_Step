@@ -10,6 +10,27 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+type sigCache struct {
+	signer Signer
+	from   common.Address
+}
+
+func Sender(signer Signer, tx *Transaction) (common.Address, error) {
+	if sc := tx.from.Load(); sc != nil {
+		sigCache := sc.(sigCache)
+		if sigCache.signer.Equal(signer) {
+			return sigCache.from, nil
+		}
+	}
+
+	addr, err := signer.Sender(tx)
+	if err != nil {
+		return common.Address{}, err
+	}
+	tx.from.Store(sigCache{signer: signer, from: addr})
+	return addr, nil
+}
+
 type Signer interface {
 	Sender(tx *Transaction) (common.Address, error)
 
@@ -17,6 +38,8 @@ type Signer interface {
 	ChainID() *big.Int
 
 	Hash(tx *Transaction) common.Hash
+
+	Equal(Signer) bool
 }
 
 func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, error) {

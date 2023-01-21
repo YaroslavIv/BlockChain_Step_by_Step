@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 const (
@@ -38,6 +39,8 @@ type Transaction struct {
 	time  time.Time
 
 	size atomic.Value
+	hash atomic.Value
+	from atomic.Value
 }
 
 func NewTX(inner TxData) *Transaction {
@@ -62,6 +65,31 @@ func (tx *Transaction) Sender() *common.Address { return copyAddressPtr(tx.inner
 
 func (tx *Transaction) RawSignatureValues() (v, r, s *big.Int) {
 	return tx.inner.rawSignatureValues()
+}
+
+func (tx *Transaction) Hash() common.Hash {
+	if hash := tx.hash.Load(); hash != nil {
+		return hash.(common.Hash)
+	}
+
+	var h common.Hash
+	if tx.Type() == LegacyTxType {
+		h = rlpHash(tx.inner)
+	} else {
+		h = prefixedRlpHash(tx.Type(), tx.inner)
+	}
+	tx.hash.Store(h)
+	return h
+}
+
+func (tx *Transaction) Size() common.StorageSize {
+	if size := tx.size.Load(); size != nil {
+		return size.(common.StorageSize)
+	}
+	c := writeCounter(0)
+	rlp.Encode(&c, &tx.inner)
+	tx.size.Store(common.StorageSize(c))
+	return common.StorageSize(c)
 }
 
 func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, error) {
@@ -97,3 +125,9 @@ func copyAddressPtr(a *common.Address) *common.Address {
 	cpy := *a
 	return &cpy
 }
+
+type TxByNonce Transactions
+
+func (s TxByNonce) Len() int           { return len(s) }
+func (s TxByNonce) Less(i, j int) bool { return s[i].Nonce() < s[j].Nonce() }
+func (s TxByNonce) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }

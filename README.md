@@ -6,6 +6,6 @@
 - [x] Consensus (POW)
 - [x] Transactions
 - [x] Accounts
-- [ ] Pool-Transaction
+- [x] Pool-Transaction
 - [ ] DB
 - [ ] P2P

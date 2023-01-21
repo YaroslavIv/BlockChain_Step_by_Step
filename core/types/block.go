@@ -115,3 +115,10 @@ func (b *Block) Number() *big.Int        { return new(big.Int).Set(b.header.Numb
 func (b *Block) ParentHash() common.Hash { return b.header.ParentHash }
 func (b *Block) Nonce() uint64           { return binary.BigEndian.Uint64(b.header.Nonce[:]) }
 func (b *Block) TxHash() common.Hash     { return b.header.TxHash }
+
+type writeCounter common.StorageSize
+
+func (c *writeCounter) Write(b []byte) (int, error) {
+	*c += writeCounter(len(b))
+	return len(b), nil
+}
