@@ -32,6 +32,23 @@ func NewBlockChain(engine consensus.Engine, genesis *Genesis, statedb *state.Sta
 	return bc
 }
 
+func (bc *BlockChain) WriteBlockAndSetHead(block *types.Block) error {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	return bc.writeBlockAndSetHead(block)
+}
+
+func (bc *BlockChain) writeBlockAndSetHead(block *types.Block) error {
+	currentBlock := bc.CurrentBlock()
+	if block.ParentHash() != currentBlock.Hash() {
+		return fmt.Errorf("block.ParentHash != parent.Hash %s != %s", block.ParentHash(), currentBlock.Hash())
+	}
+
+	bc.blocks = append(bc.blocks, block)
+	return nil
+}
+
 func (bc *BlockChain) AddBlock(block *types.Block) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()

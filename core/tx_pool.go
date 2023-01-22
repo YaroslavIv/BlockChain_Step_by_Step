@@ -97,6 +97,31 @@ func (pool *TxPool) Content() (map[common.Address]types.Transactions, map[common
 	return pending, queued
 }
 
+func (pool *TxPool) Update() {
+	for addr, txl := range pool.queue {
+		if pool.pending[addr] == nil {
+			pool.pending[addr] = newTxList(false)
+		}
+
+		for _, tx := range txl.txs.items {
+			pool.queue[addr].Remove(tx)
+			pool.pending[addr].Add(tx)
+		}
+	}
+}
+
+func (pool *TxPool) RemoveTx(hash common.Hash) {
+	tx := pool.all.Get(hash)
+	if tx == nil {
+		return
+	}
+
+	addr, _ := types.Sender(pool.signer, tx)
+	if pool.pending[addr] != nil {
+		delete(pool.pending, addr)
+	}
+}
+
 func (pool *TxPool) Pending() map[common.Address]types.Transactions {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -308,6 +333,7 @@ func newAccountSet(signer types.Signer, addrs ...common.Address) *accountSet {
 	}
 	return as
 }
+
 func (as *accountSet) addTx(tx *types.Transaction) {
 	if addr, err := types.Sender(as.signer, tx); err == nil {
 		as.add(addr)

@@ -2,6 +2,7 @@ package ethash
 
 import (
 	"bcsbs/consensus"
+	"bcsbs/core/state"
 	"bcsbs/core/types"
 	"errors"
 	"math/big"
@@ -9,6 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
+)
+
+var (
+	FrontierBlockReward = big.NewInt(5e+18)
 )
 
 var (
@@ -70,4 +75,24 @@ func (ethash *Ethash) verifySeal(header *types.Header) error {
 	}
 
 	return nil
+}
+
+func (ethash *Ethash) Prepare(parent, header *types.Header) error {
+	return nil
+}
+
+func (ethash *Ethash) Finalize(header *types.Header, state *state.StateDB, txs []*types.Transaction) {
+	accumulateRewards(state, header)
+}
+
+func (ethash *Ethash) FinalizeAndAssemble(header *types.Header, state *state.StateDB, txs []*types.Transaction) (*types.Block, error) {
+	ethash.Finalize(header, state, txs)
+
+	return types.NewBlock(header, txs), nil
+}
+
+func accumulateRewards(state *state.StateDB, header *types.Header) {
+	blockReward := FrontierBlockReward
+
+	state.AddBalance(header.Coinbase, blockReward)
 }

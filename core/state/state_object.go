@@ -39,6 +39,12 @@ func newObject(db *StateDB, address common.Address, data types.StateAccount) *st
 	}
 }
 
+func (s *stateObject) deepCopy(db *StateDB) *stateObject {
+	stateObject := newObject(db, s.address, s.data)
+	stateObject.deleted = s.deleted
+	return stateObject
+}
+
 // GET
 
 func (s *stateObject) empty() bool {

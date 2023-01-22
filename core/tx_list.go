@@ -46,6 +46,15 @@ func (l *txList) Add(tx *types.Transaction) (bool, *types.Transaction) {
 	return true, old
 }
 
+func (l *txList) Remove(tx *types.Transaction) (bool, types.Transactions) {
+	nonce := tx.Nonce()
+	if removed := l.txs.Remove(nonce); !removed {
+		return false, nil
+	}
+
+	return true, nil
+}
+
 func (l *txList) Flatten() types.Transactions {
 	return l.txs.Flatten()
 }
@@ -95,4 +104,21 @@ func (m *txSortedMap) flatten() types.Transactions {
 		sort.Sort(types.TxByNonce(m.cache))
 	}
 	return m.cache
+}
+
+func (m *txSortedMap) Remove(nonce uint64) bool {
+	_, ok := m.items[nonce]
+	if !ok {
+		return false
+	}
+	for i := 0; i < m.index.Len(); i++ {
+		if (*m.index)[i] == nonce {
+			heap.Remove(m.index, i)
+			break
+		}
+	}
+	delete(m.items, nonce)
+	m.cache = nil
+
+	return true
 }

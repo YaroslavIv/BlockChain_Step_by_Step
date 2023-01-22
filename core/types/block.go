@@ -23,6 +23,7 @@ func (n BlockNonce) Uint64() uint64 {
 
 type Header struct {
 	ParentHash common.Hash
+	Coinbase   common.Address
 	TxHash     common.Hash
 	Number     *big.Int
 	Time       uint64
@@ -100,21 +101,24 @@ func (b *Block) String() string {
 		tx_info += tx.String() + "\n"
 	}
 	return fmt.Sprintf("Block: %d\n", b.NumberU64()) +
-		fmt.Sprintf("ParentHash: %s\n", b.header.ParentHash) +
-		fmt.Sprintf("Time: %d\n", b.header.Time) +
+		fmt.Sprintf("ParentHash: %s\n", b.ParentHash()) +
+		fmt.Sprintf("Coinbase: %s\n", b.Coinbase()) +
+		fmt.Sprintf("Time: %d\n", b.Time()) +
 		fmt.Sprintf("Hash: %s\n", b.Hash()) +
 		fmt.Sprintf("TxHash: %s\n", b.TxHash()) +
 		fmt.Sprintf("Nonce: %d\n", b.Nonce()) + tx_info
 
 }
 
-func (b *Block) Body() *Body             { return &Body{b.transactions} }
-func (b *Block) Header() *Header         { return CopyHeader(b.header) }
-func (b *Block) NumberU64() uint64       { return b.header.Number.Uint64() }
-func (b *Block) Number() *big.Int        { return new(big.Int).Set(b.header.Number) }
-func (b *Block) ParentHash() common.Hash { return b.header.ParentHash }
-func (b *Block) Nonce() uint64           { return binary.BigEndian.Uint64(b.header.Nonce[:]) }
-func (b *Block) TxHash() common.Hash     { return b.header.TxHash }
+func (b *Block) Body() *Body              { return &Body{b.transactions} }
+func (b *Block) Header() *Header          { return CopyHeader(b.header) }
+func (b *Block) NumberU64() uint64        { return b.header.Number.Uint64() }
+func (b *Block) Number() *big.Int         { return new(big.Int).Set(b.header.Number) }
+func (b *Block) ParentHash() common.Hash  { return b.header.ParentHash }
+func (b *Block) Nonce() uint64            { return binary.BigEndian.Uint64(b.header.Nonce[:]) }
+func (b *Block) TxHash() common.Hash      { return b.header.TxHash }
+func (b *Block) Time() uint64             { return b.header.Time }
+func (b *Block) Coinbase() common.Address { return b.header.Coinbase }
 
 type writeCounter common.StorageSize
 

@@ -28,6 +28,23 @@ func New(trie Trie) (*StateDB, error) {
 	return sdb, nil
 }
 
+func (s *StateDB) Copy() *StateDB {
+	st := &StateDB{
+		trie:         s.trie,
+		stateObjects: make(map[common.Address]*stateObject),
+	}
+
+	st.stateObjects[common.Address{}] = nil
+
+	for addr, state := range s.stateObjects {
+		if state != nil {
+			st.stateObjects[addr] = state.deepCopy(s)
+		}
+	}
+
+	return st
+}
+
 // STATE
 
 func (s *StateDB) getStateObject(addr common.Address) *stateObject {

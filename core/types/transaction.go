@@ -1,6 +1,7 @@
 package types
 
 import (
+	"container/heap"
 	"errors"
 	"fmt"
 	"math/big"
@@ -138,3 +139,89 @@ type TxByNonce Transactions
 func (s TxByNonce) Len() int           { return len(s) }
 func (s TxByNonce) Less(i, j int) bool { return s[i].Nonce() < s[j].Nonce() }
 func (s TxByNonce) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+type TxWithMinerFee struct {
+	tx       *Transaction
+	minerFee *big.Int
+}
+
+type TxByPriceAndTime []*TxWithMinerFee
+
+func (s TxByPriceAndTime) Len() int { return len(s) }
+func (s TxByPriceAndTime) Less(i, j int) bool {
+	cmp := s[i].minerFee.Cmp(s[j].minerFee)
+	if cmp == 0 {
+		return s[i].tx.time.Before(s[j].tx.time)
+	}
+	return cmp > 0
+}
+func (s TxByPriceAndTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+func (s *TxByPriceAndTime) Push(x interface{}) {
+	*s = append(*s, x.(*TxWithMinerFee))
+}
+
+func (s *TxByPriceAndTime) Pop() interface{} {
+	old := *s
+	n := len(old)
+	x := old[n-1]
+	*s = old[0 : n-1]
+	return x
+}
+
+type TransactionsByPriceAndNonce struct {
+	txs    map[common.Address]Transactions // Per account nonce-sorted list of transactions
+	heads  TxByPriceAndTime                // Next transaction for each unique account (price heap)
+	signer Signer                          // Signer for the set of transactions
+}
+
+func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
+	heads := make(TxByPriceAndTime, 0, len(txs))
+	for from, accTxs := range txs {
+		acc, _ := Sender(signer, accTxs[0])
+		wrapped, err := NewTxWithMinerFee(accTxs[0])
+		if acc != from || err != nil {
+			delete(txs, from)
+			continue
+		}
+		heads = append(heads, wrapped)
+		txs[from] = accTxs[1:]
+	}
+	heap.Init(&heads)
+
+	return &TransactionsByPriceAndNonce{
+		txs:    txs,
+		heads:  heads,
+		signer: signer,
+	}
+}
+
+func (t *TransactionsByPriceAndNonce) Peek() *Transaction {
+	if len(t.heads) == 0 {
+		return nil
+	}
+	return t.heads[0].tx
+}
+
+func (t *TransactionsByPriceAndNonce) Pop() {
+	heap.Pop(&t.heads)
+}
+
+func (t *TransactionsByPriceAndNonce) Shift() {
+	acc, _ := Sender(t.signer, t.heads[0].tx)
+	if txs, ok := t.txs[acc]; ok && len(txs) > 0 {
+		if wrapped, err := NewTxWithMinerFee(txs[0]); err == nil {
+			t.heads[0], t.txs[acc] = wrapped, txs[1:]
+			heap.Fix(&t.heads, 0)
+			return
+		}
+	}
+	heap.Pop(&t.heads)
+}
+
+func NewTxWithMinerFee(tx *Transaction) (*TxWithMinerFee, error) {
+	return &TxWithMinerFee{
+		tx:       tx,
+		minerFee: common.Big0,
+	}, nil
+}

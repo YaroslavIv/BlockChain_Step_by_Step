@@ -8,5 +8,6 @@
 - [x] Accounts 1
 - [x] Pool-Transaction
 - [x] Transactions 2
+- [x] Miner
 - [ ] DB
 - [ ] P2P

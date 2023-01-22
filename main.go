@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	example.Transactions_2()
+	example.Miner()
 }
