@@ -9,5 +9,6 @@
 - [x] Pool-Transaction
 - [x] Transactions 2
 - [x] Miner
-- [ ] DB
+- [x] DB
+- [ ] EVM 1
 - [ ] P2P

@@ -1,9 +1,11 @@
 package types
 
 import (
+	"bytes"
 	"container/heap"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -19,6 +21,7 @@ const (
 var (
 	ErrInvalidSig         = errors.New("invalid transaction v, r, s values")
 	ErrTxTypeNotSupported = errors.New("transaction type not supported")
+	errShortTypedTx       = errors.New("typed transaction too short")
 )
 
 type TxData interface {
@@ -114,12 +117,66 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 	return tx_sign, err
 }
 
-func (tx *Transaction) String() string {
+func (tx *Transaction) Text() string {
 	return fmt.Sprintf("\tSender: %s\n", tx.Sender()) +
 		fmt.Sprintf("\tTo: %s\n", tx.To()) +
 		fmt.Sprintf("\tValue: %d\n", tx.Value()) +
 		fmt.Sprintf("\tNonce: %d\n", tx.Nonce()) +
 		fmt.Sprintf("\tData: %s\n", tx.Data())
+}
+
+func (tx *Transaction) EncodeRLP(w io.Writer) error {
+	if tx.Type() == LegacyTxType {
+		return rlp.Encode(w, tx.inner)
+	}
+	// It's an EIP-2718 typed TX envelope.
+	buf := encodeBufferPool.Get().(*bytes.Buffer)
+	defer encodeBufferPool.Put(buf)
+	buf.Reset()
+	if err := tx.encodeTyped(buf); err != nil {
+		return err
+	}
+	return rlp.Encode(w, buf.Bytes())
+}
+
+func (tx *Transaction) encodeTyped(w *bytes.Buffer) error {
+	w.WriteByte(tx.Type())
+	return rlp.Encode(w, tx.inner)
+}
+
+func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
+	if len(b) <= 1 {
+		return nil, errShortTypedTx
+	}
+	switch b[0] {
+	default:
+		return nil, ErrTxTypeNotSupported
+	}
+}
+
+func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
+	kind, size, err := s.Kind()
+	switch {
+	case err != nil:
+		return err
+	case kind == rlp.List:
+		var inner LegacyTx
+		err := s.Decode(&inner)
+		if err == nil {
+			tx.setDecoded(&inner, int(rlp.ListSize(size)))
+		}
+		return err
+	default:
+		var b []byte
+		if b, err = s.Bytes(); err != nil {
+			return err
+		}
+		inner, err := tx.decodeTyped(b)
+		if err == nil {
+			tx.setDecoded(inner, len(b))
+		}
+		return err
+	}
 }
 
 type Transactions []*Transaction

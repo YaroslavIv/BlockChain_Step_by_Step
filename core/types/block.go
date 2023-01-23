@@ -98,7 +98,7 @@ func (b *Block) Hash() common.Hash {
 func (b *Block) String() string {
 	tx_info := fmt.Sprintf("Tx Len: %d\n", len(b.transactions))
 	for _, tx := range b.transactions {
-		tx_info += tx.String() + "\n"
+		tx_info += tx.Text() + "\n"
 	}
 	return fmt.Sprintf("Block: %d\n", b.NumberU64()) +
 		fmt.Sprintf("ParentHash: %s\n", b.ParentHash()) +
@@ -119,6 +119,17 @@ func (b *Block) Nonce() uint64            { return binary.BigEndian.Uint64(b.hea
 func (b *Block) TxHash() common.Hash      { return b.header.TxHash }
 func (b *Block) Time() uint64             { return b.header.Time }
 func (b *Block) Coinbase() common.Address { return b.header.Coinbase }
+
+func (b *Block) Transactions() Transactions { return b.transactions }
+
+func (b *Block) WithBody(transactions []*Transaction) *Block {
+	block := &Block{
+		header:       CopyHeader(b.header),
+		transactions: make([]*Transaction, len(transactions)),
+	}
+	copy(block.transactions, transactions)
+	return block
+}
 
 type writeCounter common.StorageSize
 

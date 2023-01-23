@@ -3,6 +3,7 @@ package example
 import (
 	"bcsbs/consensus/ethash"
 	"bcsbs/core"
+	"bcsbs/core/rawdb"
 	"bcsbs/core/types"
 	"fmt"
 	"math"
@@ -20,7 +21,8 @@ func Transactions() {
 		Target: big.NewInt(int64(math.Pow(16, 3))),
 	}
 
-	bc := core.NewBlockChain(engine, genesis, nil)
+	db, _ := rawdb.NewLevelDBDatabase("./my_geth", 0, 0, "", false)
+	bc := core.NewBlockChain(db, engine, genesis, nil)
 
 	key, _ := crypto.GenerateKey()
 	signer := types.HomesteadSigner{}

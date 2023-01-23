@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -11,6 +12,10 @@ import (
 
 var hasherPool = sync.Pool{
 	New: func() interface{} { return sha3.NewLegacyKeccak256() },
+}
+
+var encodeBufferPool = sync.Pool{
+	New: func() interface{} { return new(bytes.Buffer) },
 }
 
 func rlpHash(x interface{}) (h common.Hash) {

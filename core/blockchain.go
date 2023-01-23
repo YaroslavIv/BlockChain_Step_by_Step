@@ -2,14 +2,20 @@ package core
 
 import (
 	"bcsbs/consensus"
+	"bcsbs/core/rawdb"
 	"bcsbs/core/state"
 	"bcsbs/core/types"
+	"bcsbs/ethdb"
 	"fmt"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type BlockChain struct {
 	blocks types.Blocks
+
+	db ethdb.Database
 
 	genesisBlock *types.Block
 
@@ -20,16 +26,29 @@ type BlockChain struct {
 	mu sync.Mutex
 }
 
-func NewBlockChain(engine consensus.Engine, genesis *Genesis, statedb *state.StateDB) *BlockChain {
+func NewBlockChain(db ethdb.Database, engine consensus.Engine, genesis *Genesis, statedb *state.StateDB) *BlockChain {
 	bc := &BlockChain{
-		engine:       engine,
-		genesisBlock: genesis.ToBlock(),
-		statedb:      statedb,
+		db:      db,
+		engine:  engine,
+		statedb: statedb,
+	}
+
+	if genesis != nil {
+		bc.AddGenesis(genesis)
 	}
 
 	bc.blocks = append(bc.blocks, bc.genesisBlock)
 
 	return bc
+}
+
+func (bc *BlockChain) AddGenesis(genesis *Genesis) {
+	bc.genesisBlock = genesis.ToBlock()
+
+	rawdb.WriteHeadHeaderHash(bc.db, bc.genesisBlock.Hash())
+	rawdb.WriteHeadBlockHash(bc.db, bc.genesisBlock.Hash())
+	rawdb.WriteHeaderNumber(bc.db, bc.genesisBlock.Hash(), bc.genesisBlock.NumberU64())
+	rawdb.WriteBlock(bc.db, bc.genesisBlock)
 }
 
 func (bc *BlockChain) WriteBlockAndSetHead(block *types.Block) error {
@@ -44,6 +63,12 @@ func (bc *BlockChain) writeBlockAndSetHead(block *types.Block) error {
 	if block.ParentHash() != currentBlock.Hash() {
 		return fmt.Errorf("block.ParentHash != parent.Hash %s != %s", block.ParentHash(), currentBlock.Hash())
 	}
+
+	rawdb.WriteHeadHeaderHash(bc.db, block.Hash())
+	rawdb.WriteHeadBlockHash(bc.db, block.Hash())
+	rawdb.WriteHeaderNumber(bc.db, block.Hash(), block.NumberU64())
+	rawdb.WriteTxLookupEntriesByBlock(bc.db, block)
+	rawdb.WriteBlock(bc.db, block)
 
 	bc.blocks = append(bc.blocks, block)
 	return nil
@@ -105,9 +130,15 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 
 func (bc *BlockChain) String() string {
 	var out string
+	block := bc.CurrentBlock()
 
-	for _, block := range bc.blocks {
+	for {
 		out += block.String() + "\n"
+		if block.ParentHash() == (common.Hash{}) && block.NumberU64() < 1 {
+			break
+		}
+
+		block = rawdb.ReadBlock(bc.db, block.ParentHash(), block.NumberU64()-1)
 	}
 
 	return out

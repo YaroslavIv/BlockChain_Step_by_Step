@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bcsbs/core/rawdb"
 	"bcsbs/core/state"
 	"bcsbs/core/types"
 
@@ -8,11 +9,11 @@ import (
 )
 
 func (bc *BlockChain) CurrentHeader() *types.Header {
-	return bc.CurrentBlock().Header()
+	return rawdb.ReadHeadHeader(bc.db)
 }
 
 func (bc *BlockChain) CurrentBlock() *types.Block {
-	return bc.blocks[len(bc.blocks)-1]
+	return rawdb.ReadHeadBlock(bc.db)
 }
 
 func (bc *BlockChain) StateAt() (*state.StateDB, error) {
@@ -20,19 +21,13 @@ func (bc *BlockChain) StateAt() (*state.StateDB, error) {
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
-	for _, block := range bc.blocks {
-		if block.Hash() == hash {
-			return block
-		}
+	if number := rawdb.ReadHeaderNumber(bc.db, hash); number != nil {
+		return rawdb.ReadBlock(bc.db, hash, *number)
 	}
 	return nil
 }
 
 func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {
-	if len(bc.blocks) < int(number)+1 {
-		return false
-	} else if bc.blocks[number].Hash() != hash {
-		return false
-	}
-	return true
+	return rawdb.HasHeader(bc.db, hash, number) &&
+		rawdb.HasBody(bc.db, hash, number)
 }

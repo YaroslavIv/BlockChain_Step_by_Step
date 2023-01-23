@@ -154,6 +154,7 @@ func (s *StateDB) AddBalance(addr common.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.AddBalance(amount)
+		s.UpdateStateObject(stateObject)
 	}
 }
 
@@ -161,6 +162,7 @@ func (s *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SubBalance(amount)
+		s.UpdateStateObject(stateObject)
 	}
 }
 
@@ -168,6 +170,7 @@ func (s *StateDB) SetBalance(addr common.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetBalance(amount)
+		s.UpdateStateObject(stateObject)
 	}
 }
 
@@ -175,5 +178,6 @@ func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetNonce(nonce)
+		s.UpdateStateObject(stateObject)
 	}
 }

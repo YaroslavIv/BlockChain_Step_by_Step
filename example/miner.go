@@ -3,6 +3,7 @@ package example
 import (
 	"bcsbs/consensus/ethash"
 	"bcsbs/core"
+	"bcsbs/core/rawdb"
 	"bcsbs/core/state"
 	"bcsbs/core/types"
 	"bcsbs/miner"
@@ -35,10 +36,11 @@ func Miner() {
 		Target: big.NewInt(int64(math.Pow(16, 3))),
 	}
 
-	state_trie, _ := trie.NewStateTrie()
+	db, _ := rawdb.NewLevelDBDatabase("./my_geth", 0, 0, "", false)
+	state_trie, _ := trie.NewStateTrie(db)
 	statedb, _ := state.New(state_trie)
 
-	bc := core.NewBlockChain(engine, genesis, statedb)
+	bc := core.NewBlockChain(db, engine, genesis, statedb)
 
 	key, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(key.PublicKey)

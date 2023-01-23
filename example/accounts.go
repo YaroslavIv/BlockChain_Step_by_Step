@@ -10,7 +10,7 @@ import (
 )
 
 func Accounts() {
-	state_trie, _ := trie.NewStateTrie()
+	state_trie, _ := trie.NewStateTrie(nil)
 	statedb, _ := state.New(state_trie)
 
 	key, _ := crypto.GenerateKey()
