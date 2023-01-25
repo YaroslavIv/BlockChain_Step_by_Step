@@ -63,6 +63,23 @@ func (s *stateObject) Nonce() uint64 {
 	return s.data.Nonce
 }
 
+func (s *stateObject) GetState(trie Trie, key common.Hash) common.Hash {
+	hash_byte, _ := trie.TryGet(key[:])
+	return common.BytesToHash(hash_byte)
+}
+
+func (s *stateObject) CodeHash() []byte {
+	return s.data.CodeHash
+}
+
+func (s *stateObject) Code() []byte {
+
+	if bytes.Equal(s.CodeHash(), emptyCodeHash) {
+		return nil
+	}
+	return s.CodeHash()
+}
+
 // SET
 // -PUB
 
@@ -89,6 +106,24 @@ func (s *stateObject) SetBalance(amount *big.Int) {
 
 func (s *stateObject) SetNonce(nonce uint64) {
 	s.setNonce(nonce)
+}
+
+func (s *stateObject) SetState(trie Trie, key, value common.Hash) {
+	hash_byte, _ := trie.TryGet(key[:])
+	prev := common.BytesToHash(hash_byte)
+
+	if prev == value {
+		return
+	}
+	trie.TryUpdate(key[:], value[:])
+}
+
+func (s *stateObject) SetCode(codeHash common.Hash, code []byte) {
+	s.setCode(codeHash, code)
+}
+
+func (s *stateObject) setCode(codeHash common.Hash, code []byte) {
+	s.data.CodeHash = codeHash[:]
 }
 
 // -PRI

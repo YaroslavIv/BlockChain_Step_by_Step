@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
+// TxTrie
+
 func HasAccountData(db ethdb.Reader, addr common.Address) bool {
 	if has, err := db.Has(accountData(addr)); !has || err != nil {
 		return false
@@ -36,13 +38,33 @@ func ReadAccountData(db ethdb.Reader, addr common.Address) *types.StateAccount {
 	return acc
 }
 
-func WriteAccountData(db ethdb.Writer, addr common.Address, acc *types.StateAccount) {
-	data, err := rlp.EncodeToBytes(acc)
-	if err != nil {
-		fmt.Println("Failed to RLP encode account", "err", err)
-	}
+func WriteAccountData(db ethdb.Writer, addr common.Address, val []byte) {
 	key := accountData(addr)
-	if err := db.Put(key, data); err != nil {
+	if err := db.Put(key, val); err != nil {
+		fmt.Println("Failed to store header", "err", err)
+	}
+}
+
+// StorageTrie
+
+func HasStorage(db ethdb.Reader, key []byte) bool {
+	if has, err := db.Has(storage(key)); !has || err != nil {
+		return false
+	}
+	return true
+}
+
+func ReadStorage(db ethdb.Reader, key []byte) []byte {
+	data, err := db.Get(storage(key))
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func WriteStorage(db ethdb.Writer, key, val []byte) {
+	data := storage(key)
+	if err := db.Put(data, val[:]); err != nil {
 		fmt.Println("Failed to store header", "err", err)
 	}
 }

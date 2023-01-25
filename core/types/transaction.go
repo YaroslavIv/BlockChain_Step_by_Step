@@ -122,14 +122,14 @@ func (tx *Transaction) Text() string {
 		fmt.Sprintf("\tTo: %s\n", tx.To()) +
 		fmt.Sprintf("\tValue: %d\n", tx.Value()) +
 		fmt.Sprintf("\tNonce: %d\n", tx.Nonce()) +
-		fmt.Sprintf("\tData: %s\n", tx.Data())
+		fmt.Sprintf("\tData: %x\n", tx.Data())
 }
 
 func (tx *Transaction) EncodeRLP(w io.Writer) error {
 	if tx.Type() == LegacyTxType {
 		return rlp.Encode(w, tx.inner)
 	}
-	// It's an EIP-2718 typed TX envelope.
+
 	buf := encodeBufferPool.Get().(*bytes.Buffer)
 	defer encodeBufferPool.Put(buf)
 	buf.Reset()
@@ -185,7 +185,7 @@ func (s Transactions) Len() int { return len(s) }
 
 func copyAddressPtr(a *common.Address) *common.Address {
 	if a == nil {
-		return nil
+		return &common.Address{}
 	}
 	cpy := *a
 	return &cpy

@@ -2,10 +2,13 @@ package state
 
 import (
 	"bcsbs/core/types"
+	"bcsbs/core/vm"
+	"bcsbs/trie"
 	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var (
@@ -13,24 +16,29 @@ var (
 )
 
 type StateDB struct {
-	trie Trie
+	tx_trie      Trie
+	storage_trie Trie
+
+	evm *vm.EVM
 
 	stateObjects map[common.Address]*stateObject
 }
 
-func New(trie Trie) (*StateDB, error) {
+func New(tx_trie, storage_trie Trie, blockCtx *vm.BlockContext) (*StateDB, error) {
 	sdb := &StateDB{
-		trie: trie,
+		tx_trie:      tx_trie,
+		storage_trie: storage_trie,
 
 		stateObjects: make(map[common.Address]*stateObject),
 	}
-
+	sdb.evm = vm.NewEVM(sdb, blockCtx)
 	return sdb, nil
 }
 
 func (s *StateDB) Copy() *StateDB {
 	st := &StateDB{
-		trie:         s.trie,
+		tx_trie:      s.tx_trie,
+		storage_trie: s.storage_trie,
 		stateObjects: make(map[common.Address]*stateObject),
 	}
 
@@ -62,8 +70,8 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 	var data *types.StateAccount
 
 	if data == nil {
-		var err error
-		data, err = s.trie.TryGetAccount(addr.Bytes())
+		data_byte, err := s.tx_trie.TryGet(addr.Bytes())
+		data, _ = trie.Byte2StateAccount(data_byte)
 		if err != nil {
 			fmt.Printf("getDeleteStateObject (%x) error: %s\n", addr.Bytes(), err)
 			return nil
@@ -112,11 +120,14 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 // UPDATE
 
 func (s *StateDB) ApplyTx(tx *types.Transaction) bool {
-	stateObject := s.getStateObject(*tx.Sender())
+	stateObject := s.GetOrNewStateObject(*tx.Sender())
 	if stateObject != nil && stateObject.Balance().Cmp(tx.Value()) >= 0 {
-		stateObject.setNonce(stateObject.Nonce() + 1)
-		stateObject.AddBalance(tx.Value().Neg(tx.Value()))
-		s.AddBalance(*tx.To(), tx.Value())
+		if *tx.To() != (common.Address{}) {
+			s.evm.Call(vm.AccountRef(*tx.Sender()), *tx.To(), tx.Data(), tx.Value())
+		} else {
+			s.evm.Create(vm.AccountRef(*tx.Sender()), tx.Data(), tx.Value())
+		}
+
 		return true
 	}
 	return false
@@ -124,9 +135,15 @@ func (s *StateDB) ApplyTx(tx *types.Transaction) bool {
 
 func (s *StateDB) UpdateStateObject(obj *stateObject) {
 	addr := obj.Address()
-	if err := s.trie.TryUpdateAccount(addr[:], &obj.data); err != nil {
-		panic(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
+
+	if data, err := trie.StateAccount2Byte(&obj.data); err == nil {
+		if err := s.tx_trie.TryUpdate(addr[:], data); err != nil {
+			panic(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
+		}
+	} else {
+		panic(fmt.Errorf("StateAccount2Byte error: %v", err))
 	}
+
 }
 
 // GET
@@ -146,6 +163,30 @@ func (s *StateDB) GetNonce(addr common.Address) uint64 {
 	}
 
 	return 0
+}
+
+func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetState(s.storage_trie, hash)
+	}
+	return common.Hash{}
+}
+
+func (s *StateDB) GetCodeHash(addr common.Address) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject == nil {
+		return common.Hash{}
+	}
+	return common.BytesToHash(stateObject.CodeHash())
+}
+
+func (s *StateDB) GetCode(addr common.Address) []byte {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Code()
+	}
+	return nil
 }
 
 // SET
@@ -178,6 +219,21 @@ func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetNonce(nonce)
+		s.UpdateStateObject(stateObject)
+	}
+}
+
+func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetState(s.storage_trie, key, value)
+	}
+}
+
+func (s *StateDB) SetCode(addr common.Address, code []byte) {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetCode(crypto.Keccak256Hash(code), code)
 		s.UpdateStateObject(stateObject)
 	}
 }

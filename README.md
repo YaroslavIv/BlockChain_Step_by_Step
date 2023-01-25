@@ -10,5 +10,5 @@
 - [x] Transactions 2
 - [x] Miner
 - [x] DB
-- [ ] EVM 1
+- [x] EVM 1
 - [ ] P2P

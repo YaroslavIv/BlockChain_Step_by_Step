@@ -37,8 +37,8 @@ func Miner() {
 	}
 
 	db, _ := rawdb.NewLevelDBDatabase("./my_geth", 0, 0, "", false)
-	state_trie, _ := trie.NewStateTrie(db)
-	statedb, _ := state.New(state_trie)
+	state_trie, _ := trie.NewTxTrie(db)
+	statedb, _ := state.New(state_trie, nil, nil)
 
 	bc := core.NewBlockChain(db, engine, genesis, statedb)
 

@@ -19,6 +19,8 @@ var (
 	txLookupPrefix = []byte("l") // txLookupPrefix + hash -> transaction/receipt lookup metadata
 
 	accountDataPrefix = []byte("a") // accountDataPrefix + addr -> StateAccount
+
+	storagePrefix = []byte("s") // storagePrefix + root + key -> Storage metadata
 )
 
 func encodeBlockNumber(number uint64) []byte {
@@ -49,4 +51,8 @@ func txLookupKey(hash common.Hash) []byte {
 
 func accountData(addr common.Address) []byte {
 	return append(accountDataPrefix, addr.Bytes()...)
+}
+
+func storage(key []byte) []byte {
+	return append(storagePrefix, key...)
 }

@@ -25,6 +25,14 @@ func NewTransaction(nonce uint64, to common.Address, amount *big.Int, data []byt
 	})
 }
 
+func NewContractCreation(nonce uint64, amount *big.Int, data []byte) *Transaction {
+	return NewTX(&LegacyTx{
+		Nonce: nonce,
+		Value: amount,
+		Data:  data,
+	})
+}
+
 func (tx *LegacyTx) copy() TxData {
 	cpy := &LegacyTx{
 		Nonce: tx.Nonce,

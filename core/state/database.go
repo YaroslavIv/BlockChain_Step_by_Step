@@ -1,9 +1,7 @@
 package state
 
-import "bcsbs/core/types"
-
 type Trie interface {
-	TryGetAccount(key []byte) (*types.StateAccount, error)
+	TryGet(key []byte) ([]byte, error)
 
-	TryUpdateAccount(key []byte, account *types.StateAccount) error
+	TryUpdate(key, val []byte) error
 }

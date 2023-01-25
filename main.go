@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	example.DB()
+	example.EVM()
 }
