@@ -31,6 +31,8 @@ type TxPool struct {
 	signer types.Signer
 	mu     sync.RWMutex
 
+	txsCh chan<- NewTxsEvent
+
 	currentState *state.StateDB
 
 	pending map[common.Address]*txList
@@ -44,6 +46,8 @@ func NewTxPool(chain blockChain, signer types.Signer) *TxPool {
 		chain:  chain,
 		signer: signer,
 
+		txsCh: make(chan NewTxsEvent),
+
 		pending: make(map[common.Address]*txList),
 		queue:   make(map[common.Address]*txList),
 		beats:   make(map[common.Address]time.Time),
@@ -52,6 +56,10 @@ func NewTxPool(chain blockChain, signer types.Signer) *TxPool {
 
 	pool.reset()
 	return pool
+}
+
+func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- NewTxsEvent) {
+	pool.txsCh = ch
 }
 
 func (pool *TxPool) reset() {
@@ -207,13 +215,29 @@ func (pool *TxPool) enqueueTx(hash common.Hash, tx *types.Transaction, addAll bo
 	return old != nil, nil
 }
 
+func (pool *TxPool) AddLocalAndUpdate(tx *types.Transaction) error {
+	errs := pool.AddLocalsAndUpdate([]*types.Transaction{tx})
+	return errs[0]
+}
+
 func (pool *TxPool) AddLocal(tx *types.Transaction) error {
 	errs := pool.AddLocals([]*types.Transaction{tx})
 	return errs[0]
 }
 
 func (pool *TxPool) AddLocals(txs []*types.Transaction) []error {
-	return pool.addTxs(txs, true)
+	err := pool.addTxs(txs, true)
+	pool.txsCh <- NewTxsEvent{txs}
+
+	return err
+}
+
+func (pool *TxPool) AddLocalsAndUpdate(txs []*types.Transaction) []error {
+	err := pool.addTxs(txs, true)
+	pool.Update()
+	pool.txsCh <- NewTxsEvent{txs}
+
+	return err
 }
 
 func (pool *TxPool) addTxs(txs []*types.Transaction, sync bool) []error {

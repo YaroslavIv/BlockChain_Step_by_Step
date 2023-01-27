@@ -1,9 +1,10 @@
 package main
 
 import (
-	"bcsbs/example"
+	"bcsbs/cli"
 )
 
 func main() {
-	example.EVM()
+	cli := cli.CLI{}
+	cli.Run()
 }

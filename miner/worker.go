@@ -46,6 +46,10 @@ type worker struct {
 	eth    Backend
 	chain  *core.BlockChain
 
+	// Subscriptions
+	txsCh chan core.NewTxsEvent
+
+	// Channels
 	newWorkCh chan *newWorkReq
 	taskCh    chan *task
 	resultCh  chan *types.Block
@@ -76,6 +80,8 @@ func newWorker(engine consensus.Engine, eth Backend) *worker {
 		eth:    eth,
 		chain:  eth.BlockChain(),
 
+		txsCh: make(chan core.NewTxsEvent),
+
 		newWorkCh: make(chan *newWorkReq),
 		taskCh:    make(chan *task),
 		resultCh:  make(chan *types.Block, resultQueueSize),
@@ -84,6 +90,8 @@ func newWorker(engine consensus.Engine, eth Backend) *worker {
 
 		pendingTasks: make(map[common.Hash]*task),
 	}
+
+	eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 
 	worker.wg.Add(4)
 	go worker.mainLoop()
@@ -323,6 +331,14 @@ func (w *worker) mainLoop() {
 		select {
 		case req := <-w.newWorkCh:
 			w.commitWork(req.interrupt, req.noempty, req.timestamp)
+		case ev := <-w.txsCh:
+			if !w.isRunning() && w.current != nil {
+				fmt.Println("!w.isRunning() && w.current != nil: %b, %b", w.isRunning(), w.current != nil)
+				_ = ev
+			} else {
+				fmt.Println("else")
+				w.commitWork(nil, true, time.Now().Unix())
+			}
 		case <-w.exitCh:
 			return
 		}

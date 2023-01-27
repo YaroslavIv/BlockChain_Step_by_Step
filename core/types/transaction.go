@@ -37,6 +37,7 @@ type TxData interface {
 	rawSignatureValues() (v, r, s *big.Int)
 	setSignatureValues(chainID, v, r, s *big.Int)
 	setSender(sender *common.Address)
+	setNonce(nonce uint64)
 }
 
 type Transaction struct {
@@ -68,6 +69,8 @@ func (tx *Transaction) Value() *big.Int         { return new(big.Int).Set(tx.inn
 func (tx *Transaction) Nonce() uint64           { return tx.inner.nonce() }
 func (tx *Transaction) To() *common.Address     { return copyAddressPtr(tx.inner.to()) }
 func (tx *Transaction) Sender() *common.Address { return copyAddressPtr(tx.inner.sender()) }
+
+func (tx *Transaction) SetNonce(nonce uint64) { tx.inner.setNonce(nonce) }
 
 func (tx *Transaction) Cost() *big.Int {
 	return tx.Value()
@@ -154,6 +157,15 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 	}
 }
 
+func (tx *Transaction) MarshalBinary() ([]byte, error) {
+	if tx.Type() == LegacyTxType {
+		return rlp.EncodeToBytes(tx.inner)
+	}
+	var buf bytes.Buffer
+	err := tx.encodeTyped(&buf)
+	return buf.Bytes(), err
+}
+
 func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	kind, size, err := s.Kind()
 	switch {
@@ -177,6 +189,24 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 		}
 		return err
 	}
+}
+
+func (tx *Transaction) UnmarshalBinary(b []byte) error {
+	if len(b) > 0 && b[0] > 0x7f {
+		var data LegacyTx
+		err := rlp.DecodeBytes(b, &data)
+		if err != nil {
+			return err
+		}
+		tx.setDecoded(&data, len(b))
+		return nil
+	}
+	inner, err := tx.decodeTyped(b)
+	if err != nil {
+		return err
+	}
+	tx.setDecoded(inner, len(b))
+	return nil
 }
 
 type Transactions []*Transaction

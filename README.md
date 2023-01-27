@@ -11,4 +11,5 @@
 - [x] Miner
 - [x] DB
 - [x] EVM 1
+- [x] CLI
 - [ ] P2P

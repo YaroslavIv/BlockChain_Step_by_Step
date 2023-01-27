@@ -69,3 +69,5 @@ func (tx *LegacyTx) sender() *common.Address                      { return tx.Se
 func (tx *LegacyTx) rawSignatureValues() (v, r, s *big.Int)       { return tx.V, tx.R, tx.S }
 func (tx *LegacyTx) setSignatureValues(chainID, v, r, s *big.Int) { tx.V, tx.R, tx.S = v, r, s }
 func (tx *LegacyTx) setSender(sender *common.Address)             { tx.Sender = sender }
+
+func (tx *LegacyTx) setNonce(nonce uint64) { tx.Nonce = nonce }
